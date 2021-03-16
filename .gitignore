@@ -1,0 +1,5 @@
+.venv/
+.vscode/
+midi_songs/
+test.py
+test.midi
