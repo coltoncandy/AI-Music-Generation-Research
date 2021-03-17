@@ -45,12 +45,14 @@ def num_to_note_str(num):
 
     return str(letter) + str(number)
 
-n = 14 # number of allowed pitches
-k = 1 / 8 # shortest duration
-m = 4 # number of bars
-p = 8 # pulses per bar
-q = 1 / (p * k) # one pulse has q shortest lengths
-#R = 60 # midi note for C4, the reference note
+n = 14              # number of allowed pitches
+k = 1 / 8           # shortest duration
+m = 4               # number of bars
+p = 8               # pulses per bar, cannot be more than 1 / k
+q = 1 / (p * k)     # one pulse has q shortest lengths
+
+# search space is (n + 2)^(m * p * q)
+# for 4 bars, and p = 8 , then the search space is 3.4 x 10^38
 
 # each value is in the range [0,n+1]
 # each value by default has k note length
@@ -66,40 +68,35 @@ for i in range(0, int(m * p * q)):
 
 dna = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
 
-output = stream.Stream()
+# intermediate between msuci21 stream and dna
+# almost the same as dna, except that repeating n+1s are collapsed
+# into note length
+# score = [(note, length)] where 0 <= note <= n (0 is still a rest), length is in seconds
+score = []
 
-
-rest = False    # stores if the note being worked on is a rest
-noteNum = 0     # if it's not a rest, this is its number
-noteLength = 1  # length in k units
+noteNum = 0     # current note being
+noteLength = 1  # length of note in k units
 
 for i in range(0, len(dna) + 1):
     cur = -1
     if (i < len(dna)):
         cur = dna[i]
 
-    # this is the logic to putput the current note
-    # if the current number is not 15 (or we've reached the end),
-    # the previous note needs to be written to the stream
-    # then, noteNum (or rest) is set to be worked on
     if i == (len(dna)) or 0 <= cur <= n:
-        if i != 0:
-            if rest:
-                output.append(note.Rest(duration=duration.Duration(noteLength * k * q * 4)))
-            else:
-                output.append(note.Note(num_to_note_str(noteNum), duration=duration.Duration(noteLength * k * q * 4)))
-
-        if cur == 0:
-            rest = True
-        else:
-            rest = False
-            noteNum = cur
-
+        if i > 0:
+            score.append((noteNum, noteLength * k * q))
+        noteNum = cur
         noteLength = 1
-    
-    # if the current number is 15, then just extend the length of the previous note
     elif cur == n + 1:
         noteLength += 1
+
+output = stream.Stream()
+
+for n in score:
+    if n[0] == 0:
+        output.append(note.Rest(duration=duration.Duration(n[1] * 4)))
+    else:
+        output.append(note.Note(num_to_note_str(n[0]), duration=duration.Duration(n[1] * 4)))
 
 for n in output.flat.elements:
     print(str(n) + ' ' + str(n.duration))
