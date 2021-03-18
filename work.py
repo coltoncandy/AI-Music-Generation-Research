@@ -1,6 +1,6 @@
 
 
-import random
+import random, copy
 from music21 import converter, stream, note, chord, duration
 
 '''
@@ -51,53 +51,28 @@ q = 1 / (p * k)     # one pulse has q "k's" length
 # this does not include sharps or flats, i.e. 1 -> C4, 2 -> D4
 # if dna[i] = n + 1, then the previous note is lengthened by k
 #   i.e. to make a note last t*k duration, repeat n + 1 t times
-dna = []
 
-print(m * p * q)
-for i in range(0, int(m * p * q)):
-    dna.append(random.randint(0, n + 1))
+# test = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
 
-# dna = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
-
-# intermediate between msuci21 stream and dna
-# almost the same as dna, except that repeating n+1s are collapsed
-# into note length
-# score = [(note, length)] where 0 <= note <= n (0 is still a rest), length is in seconds
-score = []
-
-output = stream.Stream()
-
-for n in score:
-    if n[0] == 0:
-        output.append(note.Rest(duration=duration.Duration(n[1] * 4)))
-    else:
-        output.append(note.Note(num_to_note_str(n[0]), duration=duration.Duration(n[1] * 4)))
-
-for n in output.flat.elements:
-    print(str(n.fullName))
-
-output.write('midi', 'test.mid')
-
-def randomData(m, p, q)
+def randomData(m, p, q):
     data = []
     for i in range(0, int(m * p * q)):
-        dna.append(random.randint(0, n + 1))
+        data.append(random.randint(0, n + 1))
 
     return data
 
+
 class DNA:
-    def __init__(self):
-        self.data = []
-        self.score = []
+    def __init__(self, data):
+        self.data = copy.deepcopy(data)
         self.stream = stream.Stream()
 
-    def setData(self, data):
-        self.data = data
+        self.getScore()
 
-
-        return self
 
     def getScore(self):
+        self.score = []
+
         noteNum = 0     # current note being
         noteLength = 1  # length of note in k units
         for i in range(0, len(self.data) + 1):
@@ -107,10 +82,24 @@ class DNA:
 
             if i == (len(self.data)) or 0 <= cur <= n:
                 if i > 0:
-                    score.append((noteNum, noteLength * k * q))
+                    self.score.append((noteNum, noteLength * k * q))
                 noteNum = cur
                 noteLength = 1
             elif cur == n + 1:
                 noteLength += 1
-        
-        return score
+
+
+    def getM21Stream(self):
+        output = stream.Stream()
+
+        for n in self.score:
+            if n[0] == 0:
+                output.append(note.Rest(duration=duration.Duration(n[1] * 4)))
+            else:
+                output.append(note.Note(num_to_note_str(n[0]), duration=duration.Duration(n[1] * 4)))
+
+        return output
+
+
+dna = DNA(randomData(m, p, q))
+dna.getM21Stream().write('midi', 'test.mid')
