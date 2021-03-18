@@ -1,14 +1,4 @@
-# To add a new cell, type '# %%'
-# To add a new markdown cell, type '# %% [markdown]'
-# %% [markdown]
-# <a href="https://colab.research.google.com/github/coltoncandy/AI-Music-Generation-Research/blob/main/Genetic_Music_Generator.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-# %%
-# from google.colab import drive
-# drive.mount('/content/gdrive', force_remount=True)
-# PROJECT_PATH = "/content/gdrive/Shareddrives/AI Winter 2021 Group Project/Genetic Algorithm 1.0.0"
-
-# %%
 
 import random
 from music21 import converter, stream, note, chord, duration
@@ -45,11 +35,11 @@ def num_to_note_str(num):
 
     return str(letter) + str(number)
 
-n = 14              # number of allowed pitches
-k = 1 / 8           # shortest duration
+n = 14              # number of allowed pitches, 14 is two octaves
+k = 1 / 8           # shortest note length, note lengths can be a multiple of k
 m = 4               # number of bars
 p = 8               # pulses per bar, cannot be more than 1 / k
-q = 1 / (p * k)     # one pulse has q shortest lengths
+q = 1 / (p * k)     # one pulse has q "k's" length
 
 # search space is (n + 2)^(m * p * q)
 # for 4 bars, and p = 8 , then the search space is 3.4 x 10^38
@@ -57,7 +47,8 @@ q = 1 / (p * k)     # one pulse has q shortest lengths
 # each value is in the range [0,n+1]
 # each value by default has k note length
 # if dna[i] = 0 then it is a break
-# if 1 <= dna[i] <= n, then it is a midi note in the range [R,n-1] where R is the reference note
+# if 1 <= dna[i] <= n, then it is (dna[i] - 1) pitches above the reference
+# this does not include sharps or flats, i.e. 1 -> C4, 2 -> D4
 # if dna[i] = n + 1, then the previous note is lengthened by k
 #   i.e. to make a note last t*k duration, repeat n + 1 t times
 dna = []
@@ -66,29 +57,13 @@ print(m * p * q)
 for i in range(0, int(m * p * q)):
     dna.append(random.randint(0, n + 1))
 
-dna = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
+# dna = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
 
 # intermediate between msuci21 stream and dna
 # almost the same as dna, except that repeating n+1s are collapsed
 # into note length
 # score = [(note, length)] where 0 <= note <= n (0 is still a rest), length is in seconds
 score = []
-
-noteNum = 0     # current note being
-noteLength = 1  # length of note in k units
-
-for i in range(0, len(dna) + 1):
-    cur = -1
-    if (i < len(dna)):
-        cur = dna[i]
-
-    if i == (len(dna)) or 0 <= cur <= n:
-        if i > 0:
-            score.append((noteNum, noteLength * k * q))
-        noteNum = cur
-        noteLength = 1
-    elif cur == n + 1:
-        noteLength += 1
 
 output = stream.Stream()
 
@@ -99,6 +74,43 @@ for n in score:
         output.append(note.Note(num_to_note_str(n[0]), duration=duration.Duration(n[1] * 4)))
 
 for n in output.flat.elements:
-    print(str(n) + ' ' + str(n.duration))
+    print(str(n.fullName))
 
 output.write('midi', 'test.mid')
+
+def randomData(m, p, q)
+    data = []
+    for i in range(0, int(m * p * q)):
+        dna.append(random.randint(0, n + 1))
+
+    return data
+
+class DNA:
+    def __init__(self):
+        self.data = []
+        self.score = []
+        self.stream = stream.Stream()
+
+    def setData(self, data):
+        self.data = data
+
+
+        return self
+
+    def getScore(self):
+        noteNum = 0     # current note being
+        noteLength = 1  # length of note in k units
+        for i in range(0, len(self.data) + 1):
+            cur = -1
+            if (i < len(self.data)):
+                cur = self.data[i]
+
+            if i == (len(self.data)) or 0 <= cur <= n:
+                if i > 0:
+                    score.append((noteNum, noteLength * k * q))
+                noteNum = cur
+                noteLength = 1
+            elif cur == n + 1:
+                noteLength += 1
+        
+        return score
