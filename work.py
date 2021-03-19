@@ -339,24 +339,28 @@ def main():
     psize = 50
     mutationPct = 0.05
     generations = 1000
-    dnaLength = int(m * p * g)
+    dnaLength = int(m * p * q)
     path = './'
 
     population = createRandomPopulation(psize, dnaLength)
     result = runGA(mutationPct, generations, population, DNA.getFitnessScore)
     writeMidi(result, path + 'GA_Specific_Best_Pairs.mid')
+    print("Finished GA Specific Best Pairs")
 
     population = createRandomPopulation(psize, dnaLength)
     result = runGANewGen(mutationPct, generations, population, DNA.getFitnessScore)
     writeMidi(result, path + 'GA_Specific_Generations.mid')
+    print("Finished GA Specific Generations")
 
     population = createRandomPopulation(psize, dnaLength)
     result = runGA(mutationPct, generations, population, DNA.getFitnessScoreRef)
     writeMidi(result, path + 'GA_Reference_Best_Pairs.mid')
+    print("Finished GA Reference Best Pairs")
 
     population = createRandomPopulation(psize, dnaLength)
     result = runGANewGen(mutationPct, generations, population, DNA.getFitnessScoreRef)
     writeMidi(result, path + 'GA_Reference_Generations.mid')
+    print("Finished GA Reference Generations")
 
 
 
