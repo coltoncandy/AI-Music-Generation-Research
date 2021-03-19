@@ -17,32 +17,15 @@ q = 1 / (p * k)     # one pulse has q "k's" length
 ref =    [ 8, 7, 8, 15, 8, 15, 8, 7, 8, 15, 7, 15, 8, 15, 6, 7, 8, 9, 8, 15, 7, 15, 8, 15, 15, 8, 7, 8, 15, 8, 15, 9 ]
 
 
-def randomData(length):
-    data = []
-    for i in range(length):
-        num = None
-        while (num == None):
-            num = random.randint(0, n + 1)
-
-            if i == 0 and num == 15:
-                num = None
-
-        assert not (i == 0 and num == 15)
-        data.append(num)
-
-    return data
-
-
 class DNA:
     def __init__(self, data):
         assert data[0] != 15
 
         self.data = copy.deepcopy(data)
         self.stream = stream.Stream()
-        self.score = self.getScore(self.data)
-
-        self.fitness = self.getFitnessScore1()
+        self.score = DNA.getScore(self.data)
         self.selectionChance = 0
+        self.fitness = 0
 
 
     def getM21Stream(self):
@@ -70,8 +53,6 @@ class DNA:
 
             self.data[index] = newNum
 
-        self.fitness = self.getFitnessScore1()
-
 
     def breed(self, other, eps):
         assert len(self.data) == len(other.data)
@@ -86,47 +67,51 @@ class DNA:
         return child1, child2
 
 
+    def findFitness(self, fitnessFn):
+        self.fitness = fitnessFn(self)
+
+
     @staticmethod
-    def getFitnessScore(self):
+    def getFitnessScore(dna):
         #fitness value calculator:
         fitnessScore = 0
         extendedNoteCount = 0
         restCount = 0
-        if (self.data[0] == 0):
+        if (dna.data[0] == 0):
             restCount += 1
             fitnessScore -= 1
-        for i in range(len(self.data) - 1):
-            if (i % 4 == 0 and (self.data[i] == 0 or self.data[i] == 15)):    #try to have notes on beats
+        for i in range(len(dna.data) - 1):
+            if (i % 4 == 0 and (dna.data[i] == 0 or dna.data[i] == 15)):    #try to have notes on beats
                 fitnessScore -= 2
-            if (self.data[i] != 15 and self.data[i] != 0 and self.data[i+1] != 15 and self.data[i+1] != 0):     #avoid note jumps of > 9, and approve of note jumps of <= 2
-                if (abs(self.data[i] - self.data[i + 1]) < 2):
+            if (dna.data[i] != 15 and dna.data[i] != 0 and dna.data[i+1] != 15 and dna.data[i+1] != 0):     #avoid note jumps of > 9, and approve of note jumps of <= 2
+                if (abs(dna.data[i] - dna.data[i + 1]) < 2):
                     fitnessScore += 1
-                if (abs(self.data[i] - self.data[i + 1]) > 9):
+                if (abs(dna.data[i] - dna.data[i + 1]) > 9):
                     fitnessScore -= 1
-            if (self.data[i + 1] == 0):
+            if (dna.data[i + 1] == 0):
                 restCount += 1
-                if (i + 1 == len(self.data)):
+                if (i + 1 == len(dna.data)):
                     fitnessScore -= 1
             #following statement makes extended notes follow normal rules
-            if (self.data[i] != 15 and self.data[i] != 0 and self.data[i+1] == 15):    #consider note jumps across note continuations
+            if (dna.data[i] != 15 and dna.data[i] != 0 and dna.data[i+1] == 15):    #consider note jumps across note continuations
                 extendedNoteCount += 1
                 temp = 1
-                while ((i + temp) < len(self.data) and self.data[i + temp] == 15):    #continue until the continuation ends
+                while ((i + temp) < len(dna.data) and dna.data[i + temp] == 15):    #continue until the continuation ends
                     temp += 1
-                if (i + temp < len(self.data) and self.data[i + temp] != 0):     #if we didn't go over the end, and didn't follow the long note with a rest, check note jump scores
-                    if (abs(self.data[i] - self.data[i + temp]) < 2):
+                if (i + temp < len(dna.data) and dna.data[i + temp] != 0):     #if we didn't go over the end, and didn't follow the long note with a rest, check note jump scores
+                    if (abs(dna.data[i] - dna.data[i + temp]) < 2):
                         fitnessScore += 1
-                    if (abs(self.data[i] - self.data[i + temp]) > 9):
+                    if (abs(dna.data[i] - dna.data[i + temp]) > 9):
                         fitnessScore -= 1
             """
             #following statement makes extended notes give a bonus for *not* staying near the original note after they end
-            if (self.data[i] != 15 and self.data[i] != 0 and self.data[i+1] == 15):    #consider note jumps across note continuations
+            if (dna.data[i] != 15 and dna.data[i] != 0 and dna.data[i+1] == 15):    #consider note jumps across note continuations
                 extendedNoteCount += 1
                 temp = 1
-                while ((i + temp) < len(self.data) and self.data[i + temp] == 15):    #continue until the continuation ends
+                while ((i + temp) < len(dna.data) and dna.data[i + temp] == 15):    #continue until the continuation ends
                     temp += 1
-                if (i + temp < len(self.data) and self.data[i + temp] != 0):     #if we didn't go over the end, and didn't follow the long note with a rest, check note jump scores
-                    if (abs(self.data[i] - self.data[i + temp]) > 4):
+                if (i + temp < len(dna.data) and dna.data[i + temp] != 0):     #if we didn't go over the end, and didn't follow the long note with a rest, check note jump scores
+                    if (abs(dna.data[i] - dna.data[i + temp]) > 4):
                         fitnessScore += 1
             """
             """
@@ -227,11 +212,32 @@ class DNA:
         return str(letter) + str(number)
 
 
-def findSelectionChance(population):
+def writeMidi(dna, path):
+    dna.getM21Stream().write('midi', fp=path)
+
+
+def randomData(length):
+    data = []
+    for i in range(length):
+        num = None
+        while (num == None):
+            num = random.randint(0, n + 1)
+
+            if i == 0 and num == 15:
+                num = None
+
+        assert not (i == 0 and num == 15)
+        data.append(num)
+
+    return data
+
+
+def findSelectionChance(population, fitnessFn):
     totalFitness = 0
     lowestFitness = 1000000000000000000
 
     for individual in population:
+        individual.findFitness(fitnessFn)
         if individual.fitness < lowestFitness:
             lowestFitness = individual.fitness
 
@@ -284,14 +290,17 @@ def getMostFit(population):
     return mostFit
 
 
-def runGA(mutationPct, episodes, psize):
+def createRandomPopulation(psize, datalen):
     population = []
-
     for i in range(psize):
-        population.append(DNA(randomData(int(m * p * q))))
+        population.append(DNA(randomData(datalen)))
 
+    return population
+
+
+def runGA(mutationPct, episodes, population, fitnessFn):
     for i in range(episodes):
-        findSelectionChance(population)
+        findSelectionChance(population, fitnessFn)
         parent1 = select(population)
         parent2 = select(population)
 
@@ -303,21 +312,12 @@ def runGA(mutationPct, episodes, psize):
 
         population += [child1, child2]
 
-    mostFit = getMostFit(population)
-        
-    stream_ = mostFit.getM21Stream()
-
-    stream_.write('midi', 'result.mid')
+    return getMostFit(population)
 
 
-def runGANewgen(mutationPct, episodes, psize):
-    population = []
-
-    for i in range(psize):
-        population.append(DNA(randomData(int(m * p * q))))
-
+def runGANewGen(mutationPct, episodes, population, fitnessFn):
     for i in range(episodes):
-        findSelectionChance(population)
+        findSelectionChance(population, fitnessFn)
 
         newPop = []
         while len(newPop) < len(population):
@@ -332,15 +332,33 @@ def runGANewgen(mutationPct, episodes, psize):
         
         population = newPop
 
-    mostFit = getMostFit(population)
-        
-    stream_ = mostFit.getM21Stream()
+    return getMostFit(population)
 
-    stream_.write('midi', 'result2.mid')
 
-T = DNA(ref)
-output = T.getM21Stream()
-output.write('midi', 'runescape.mid')
+def main():
+    psize = 50
+    mutationPct = 0.05
+    generations = 1000
+    dnaLength = int(m * p * g)
+    path = './'
 
-runGA(0.05, 1000, 50)
-runGANewgen(0.05, 1000, 50)
+    population = createRandomPopulation(psize, dnaLength)
+    result = runGA(mutationPct, generations, population, DNA.getFitnessScore)
+    writeMidi(result, path + 'GA_Specific_Best_Pairs.mid')
+
+    population = createRandomPopulation(psize, dnaLength)
+    result = runGANewGen(mutationPct, generations, population, DNA.getFitnessScore)
+    writeMidi(result, path + 'GA_Specific_Generations.mid')
+
+    population = createRandomPopulation(psize, dnaLength)
+    result = runGA(mutationPct, generations, population, DNA.getFitnessScoreRef)
+    writeMidi(result, path + 'GA_Reference_Best_Pairs.mid')
+
+    population = createRandomPopulation(psize, dnaLength)
+    result = runGANewGen(mutationPct, generations, population, DNA.getFitnessScoreRef)
+    writeMidi(result, path + 'GA_Reference_Generations.mid')
+
+
+
+
+main()
