@@ -1,7 +1,10 @@
 
 
 import random, copy
-from music21 import converter, stream, note, chord, duration
+from music21 import converter, stream, note, chord, duration, environment, meter
+
+# settings = environment.UserSettings()
+# settings['lilypondPath'] = 'C:\\Program Files (x86)\\LilyPond\\usr\\bin\\lilypond.exe'
 
 n = 14              # number of allowed pitches, 14 is two octaves
 k = 1 / 8           # shortest note length, note lengths can be a multiple of k
@@ -11,7 +14,8 @@ q = 1 / (p * k)     # one pulse has q "k's" length
 
 # test = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
 
-ref = [ 1, 15, 1, 15, 2, 15, 3, 15,    5, 15, 5, 15, 15, 15, 15, 15,     1, 15, 3, 15, 5, 15, 3, 15,    2, 15, 4, 15, 6, 15, 4, 15 ]
+ref =    [ 8, 7, 8, 15, 8, 15, 8, 7, 8, 15, 7, 15, 8, 15, 6, 7, 8, 9, 8, 15, 7, 15, 8, 15, 15, 8, 7, 8, 15, 8, 15, 9 ]
+
 
 def randomData(length):
     data = []
@@ -28,6 +32,7 @@ def randomData(length):
 
     return data
 
+
 class DNA:
     def __init__(self, data):
         assert data[0] != 15
@@ -38,7 +43,6 @@ class DNA:
 
         self.fitness = self.getFitnessScore1()
         self.selectionChance = 0
-
 
 
     def getM21Stream(self):
@@ -55,9 +59,16 @@ class DNA:
 
     def mutate(self, eps):
         chance = random.random()
-        if (chance < eps):
+        if chance < eps:
             index = random.randint(0, len(self.data) - 1)
-            self.data[index] = random.randint(0, n + 1)
+            newNum = None
+
+            while newNum == None:
+                newNum = random.randint(0, n + 1)
+                if index == 0 and newNum == 15:
+                    newNum = None
+
+            self.data[index] = newNum
 
         self.fitness = self.getFitnessScore1()
 
@@ -75,6 +86,7 @@ class DNA:
         return child1, child2
 
 
+    @staticmethod
     def getFitnessScore(self):
         #fitness value calculator:
         fitnessScore = 0
@@ -130,15 +142,16 @@ class DNA:
         return (fitnessScore)
 
 
-    def getFitnessScore1(self):
-        assert len(self.data) == len(ref)
+    @staticmethod
+    def getFitnessScoreRef(dna):
+        assert len(dna.data) == len(ref)
         
-        myBars = self.bars(self.score)
-        theirBars = self.bars(self.getScore(ref))
+        myBars = DNA.bars(dna.score)
+        theirBars = DNA.bars(DNA.getScore(ref))
 
         fitness = 0
         for i in range(len(myBars)):
-            rangeDiff = self.range(myBars[i]) - self.range(theirBars[i])
+            rangeDiff = DNA.range(myBars[i]) - DNA.range(theirBars[i])
             fitness -= abs(rangeDiff)
 
             noteDiff = len(myBars[i]) - len(theirBars[i])
@@ -258,39 +271,76 @@ def removeLeastFit(population):
     
     del population[toRemove]
 
-mutationPct = 0.05
-episodes = 1000
-psize = 50
-population = []
 
-for i in range(psize):
-    population.append(DNA(randomData(int(m * p * q))))
-
-for i in range(episodes):
-    findSelectionChance(population)
-    parent1 = select(population)
-    parent2 = select(population)
-
-    child1 = None
-    child2 = None
-    (child1, child2) = parent1.breed(parent2, mutationPct)
-    removeLeastFit(population)
-    removeLeastFit(population)
-
-    population += [child1, child2]
-
-
-max = -1000000000000000000
-mostFit = None
-for individual in population:
-    fitness = individual.fitness
-    if fitness > max:
-        max = fitness
-        mostFit = individual
+def getMostFit(population):
+    max = -1000000000000000000
+    mostFit = None
+    for individual in population:
+        fitness = individual.fitness
+        if fitness > max:
+            max = fitness
+            mostFit = individual
     
-
-stream_ = mostFit.getM21Stream()
-print(stream_.timeSignature)
+    return mostFit
 
 
-stream_.write('midi', 'result.mid')
+def runGA(mutationPct, episodes, psize):
+    population = []
+
+    for i in range(psize):
+        population.append(DNA(randomData(int(m * p * q))))
+
+    for i in range(episodes):
+        findSelectionChance(population)
+        parent1 = select(population)
+        parent2 = select(population)
+
+        child1 = None
+        child2 = None
+        (child1, child2) = parent1.breed(parent2, mutationPct)
+        removeLeastFit(population)
+        removeLeastFit(population)
+
+        population += [child1, child2]
+
+    mostFit = getMostFit(population)
+        
+    stream_ = mostFit.getM21Stream()
+
+    stream_.write('midi', 'result.mid')
+
+
+def runGANewgen(mutationPct, episodes, psize):
+    population = []
+
+    for i in range(psize):
+        population.append(DNA(randomData(int(m * p * q))))
+
+    for i in range(episodes):
+        findSelectionChance(population)
+
+        newPop = []
+        while len(newPop) < len(population):
+            parent1 = select(population)
+            parent2 = select(population)
+
+            child1 = None
+            child2 = None
+            (child1, child2) = parent1.breed(parent2, mutationPct)
+
+            newPop += [child1, child2]
+        
+        population = newPop
+
+    mostFit = getMostFit(population)
+        
+    stream_ = mostFit.getM21Stream()
+
+    stream_.write('midi', 'result2.mid')
+
+T = DNA(ref)
+output = T.getM21Stream()
+output.write('midi', 'runescape.mid')
+
+runGA(0.05, 1000, 50)
+runGANewgen(0.05, 1000, 50)
