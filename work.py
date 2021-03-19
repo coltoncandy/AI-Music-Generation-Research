@@ -11,40 +11,34 @@ q = 1 / (p * k)     # one pulse has q "k's" length
 
 # test = [ 0, 3, 6, 7, 8, 15, 15, 7, 8, 7, 6, 5, 4, 15, 15, 15, 0, 4, 5, 6, 7, 15, 15, 6, 7, 6, 5, 4, 3, 15, 15, 15 ]
 
+ref = [ 1, 15, 1, 15, 2, 15, 3, 15,    5, 15, 5, 15, 15, 15, 15, 15,     1, 15, 3, 15, 5, 15, 3, 15,    2, 15, 4, 15, 6, 15, 4, 15 ]
+
 def randomData(length):
     data = []
-    for i in range(0, length):
-        data.append(random.randint(0, n + 1))
+    for i in range(length):
+        num = None
+        while (num == None):
+            num = random.randint(0, n + 1)
+
+            if i == 0 and num == 15:
+                num = None
+
+        assert not (i == 0 and num == 15)
+        data.append(num)
 
     return data
 
 class DNA:
     def __init__(self, data):
+        assert data[0] != 15
+
         self.data = copy.deepcopy(data)
         self.stream = stream.Stream()
-        self.fitness = self.getFitnessScore()
+        self.score = self.getScore(self.data)
+
+        self.fitness = self.getFitnessScore1()
         self.selectionChance = 0
 
-        self.getScore()
-
-
-    def getScore(self):
-        self.score = []
-
-        noteNum = 0     # current note being
-        noteLength = 1  # length of note in k units
-        for i in range(0, len(self.data) + 1):
-            cur = -1
-            if (i < len(self.data)):
-                cur = self.data[i]
-
-            if i == (len(self.data)) or 0 <= cur <= n:
-                if i > 0:
-                    self.score.append((noteNum, noteLength * k * q))
-                noteNum = cur
-                noteLength = 1
-            elif cur == n + 1:
-                noteLength += 1
 
 
     def getM21Stream(self):
@@ -64,6 +58,8 @@ class DNA:
         if (chance < eps):
             index = random.randint(0, len(self.data) - 1)
             self.data[index] = random.randint(0, n + 1)
+
+        self.fitness = self.getFitnessScore1()
 
 
     def breed(self, other, eps):
@@ -134,6 +130,77 @@ class DNA:
         return (fitnessScore)
 
 
+    def getFitnessScore1(self):
+        assert len(self.data) == len(ref)
+        
+        myBars = self.bars(self.score)
+        theirBars = self.bars(self.getScore(ref))
+
+        fitness = 0
+        for i in range(len(myBars)):
+            rangeDiff = self.range(myBars[i]) - self.range(theirBars[i])
+            fitness -= abs(rangeDiff)
+
+            noteDiff = len(myBars[i]) - len(theirBars[i])
+            fitness -= abs(noteDiff)
+
+        return fitness
+    
+
+    @staticmethod
+    def getScore(data):
+        score = []
+
+        noteNum = 0     # current note being
+        noteLength = 1  # length of note in k units
+        for i in range(len(data) + 1):
+            cur = -1
+            if (i < len(data)):
+                cur = data[i]
+
+            if i == (len(data)) or 0 <= cur <= n:
+                if i > 0:
+                    score.append((noteNum, noteLength * k * q))
+                noteNum = cur
+                noteLength = 1
+            elif cur == n + 1:
+                noteLength += 1
+
+        return score
+
+
+    @staticmethod
+    def bars(score):
+        bars = []
+        fitness = 0
+
+        for i in range(4):
+            bars.append([])
+
+        curTime = 0
+        for note in score:
+            index = int(curTime)
+            bars[index].append(note)
+            curTime += note[1]
+
+        return bars
+
+
+    @staticmethod
+    def range(bar):
+        max = -1000000000000000000
+        min = 1000000000000000000
+
+        for i in bar:
+            cur = i[0]
+            if cur < min:
+                min = cur
+            if cur > max:
+                max = cur
+        
+        return max - min
+
+
     @staticmethod
     def num_to_note_str(num):
         letterAsciiOffset = ((num + 1) % 7)
@@ -177,6 +244,7 @@ def select(population):
         if chance < acc:
             return individual
 
+
 def removeLeastFit(population):
     toRemove = -1
     min = 1000000000000000000
@@ -190,8 +258,7 @@ def removeLeastFit(population):
     
     del population[toRemove]
 
-
-mutationPct = 0.01
+mutationPct = 0.05
 episodes = 1000
 psize = 50
 population = []
@@ -222,4 +289,8 @@ for individual in population:
         mostFit = individual
     
 
-mostFit.getM21Stream().write('midi', 'result.mid')
+stream_ = mostFit.getM21Stream()
+print(stream_.timeSignature)
+
+
+stream_.write('midi', 'result.mid')
